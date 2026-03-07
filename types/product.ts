@@ -1,0 +1,22 @@
+export type Product = {
+  id: string;
+  created_by: string;
+  created_at: string;
+  name: string;
+  brand: string | null;
+  unit: string;
+  calories: number | null;
+  carbs: number | null;
+  protein: number | null;
+  fat: number | null;
+  purpose: string | null;
+  comment: string | null;
+  image_url_1: string | null;
+  image_url_2: string | null;
+  image_url_3: string | null;
+  image_url_4: string | null;
+  image_url_5: string | null;
+  hearts: number;
+  utaro_select: boolean;
+  utaro_comment: string | null;
+};

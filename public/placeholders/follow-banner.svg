@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="136" viewBox="0 0 580 136" fill="none">
+  <defs>
+    <linearGradient id="g2" x1="0" y1="0" x2="580" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1FA463"/>
+      <stop offset="1" stop-color="#0F7A47"/>
+    </linearGradient>
+  </defs>
+  <rect width="580" height="136" rx="20" fill="url(#g2)"/>
+  <rect x="22" y="22" width="8" height="92" fill="#75E6A4" fill-opacity="0.7"/>
+  <text x="44" y="56" fill="white" font-size="36" font-family="Arial, Helvetica, sans-serif" font-weight="700">Follow Utaro</text>
+  <text x="46" y="94" fill="#D1FAE5" font-size="22" font-family="Arial, Helvetica, sans-serif" font-weight="600">Daily meal picks for body make</text>
+  <circle cx="526" cy="68" r="44" fill="#DCFCE7"/>
+  <circle cx="526" cy="68" r="28" fill="#4ADE80"/>
+</svg>

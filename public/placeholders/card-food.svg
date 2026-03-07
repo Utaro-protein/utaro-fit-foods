@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240" viewBox="0 0 400 240" fill="none">
+  <rect width="400" height="240" fill="#EEF2F7"/>
+  <rect x="32" y="34" width="210" height="150" rx="20" fill="#FFFFFF"/>
+  <rect x="52" y="56" width="168" height="106" rx="14" fill="#D7EAD4"/>
+  <rect x="260" y="72" width="102" height="84" rx="14" fill="#FFFFFF"/>
+  <circle cx="302" cy="114" r="25" fill="#FDE68A"/>
+  <circle cx="332" cy="114" r="25" fill="#C7E9C0"/>
+  <text x="30" y="220" fill="#64748B" font-size="20" font-family="Arial, Helvetica, sans-serif" font-weight="700">Food placeholder</text>
+</svg>
