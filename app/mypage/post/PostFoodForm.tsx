@@ -85,7 +85,7 @@ export function PostFoodForm() {
       formData.delete("images");
       imagePaths.forEach((path, i) => formData.set(`image_url_${i + 1}`, path));
 
-      const result = await submitProduct(undefined, formData);
+      const result = await submitProduct({}, formData);
       if (result?.error) {
         setError(result.error);
       } else {
