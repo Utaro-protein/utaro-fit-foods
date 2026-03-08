@@ -1,6 +1,8 @@
 "use client";
 
 import { ProductCard } from "@/app/components/ProductCard";
+import type { SelectionCardItem } from "@/app/components/SelectionCard";
+import { SelectionCard } from "@/app/components/SelectionCard";
 import type { Product } from "@/types/product";
 import Link from "next/link";
 import { useState } from "react";
@@ -10,6 +12,8 @@ type Props = {
   handle: string;
   joinedAt: string | null;
   products: Product[];
+  favoriteProducts: Product[];
+  favoriteSelections: SelectionCardItem[];
 };
 
 export function MypageView({
@@ -17,25 +21,13 @@ export function MypageView({
   handle,
   joinedAt,
   products,
+  favoriteProducts,
+  favoriteSelections,
 }: Props) {
   const [tab, setTab] = useState<"posts" | "favorites">("posts");
 
   return (
     <main className="min-h-screen bg-zinc-50">
-      {/* 上段ナビ: 左に戻る+名前 */}
-      <div className="sticky top-0 z-10 flex items-center border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-4">
-          <Link
-            href="/"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100"
-            aria-label="ホームへ"
-          >
-            ←
-          </Link>
-          <h1 className="font-bold text-zinc-900">{displayName}</h1>
-        </div>
-      </div>
-
       {/* バナー */}
       <div className="h-32 w-full bg-zinc-200" />
 
@@ -120,9 +112,13 @@ export function MypageView({
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-15 sm:grid-cols-3 md:grid-cols-4">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  editHref={`/mypage/post/${product.id}/edit`}
+                />
               ))}
             </div>
           )}
@@ -130,12 +126,31 @@ export function MypageView({
       )}
       {tab === "favorites" && (
         <div className="mx-auto max-w-2xl p-4">
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
-            <span className="mb-4 text-4xl" aria-hidden>
-              🍴
-            </span>
-            <p className="text-zinc-500">お気に入りの食品はまだありません</p>
-          </div>
+          {favoriteProducts.length === 0 && favoriteSelections.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
+              <span className="mb-4 text-4xl" aria-hidden>
+                🍴
+              </span>
+              <p className="text-zinc-500">お気に入りの食品はまだありません</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-15 sm:grid-cols-3 md:grid-cols-4">
+              {favoriteProducts.map((product) => (
+                <ProductCard
+                  key={`product-${product.id}`}
+                  product={product}
+                  favoriteKey={{ type: "product", id: product.id }}
+                />
+              ))}
+              {favoriteSelections.map((selection) => (
+                <SelectionCard
+                  key={`selection-${selection.id}`}
+                  selection={selection}
+                  favoriteKey={{ type: "selection", id: selection.id }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>

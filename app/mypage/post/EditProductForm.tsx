@@ -1,7 +1,9 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
-import { submitProduct } from "./actions";
+import { resolveProductImageSrc } from "@/utils/productImage";
+import { updateProduct } from "./actions";
+import type { Product } from "@/types/product";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -22,12 +24,34 @@ const PURPOSE_OPTIONS = [
 
 const MAX_IMAGES = 5;
 
-export function PostFoodForm() {
+function getPathOrUrl(value: string | null | undefined): string {
+  if (!value) return "";
+  const v = value.trim();
+  if (/^https?:\/\//i.test(v)) {
+    const prefix = "/storage/v1/object/public/product-images/";
+    const i = v.indexOf(prefix);
+    if (i >= 0) return v.slice(i + prefix.length);
+    return v;
+  }
+  return v;
+}
+
+type Props = { product: Product };
+
+export function EditProductForm({ product }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+
+  const existingPaths = [
+    product.image_url_1,
+    product.image_url_2,
+    product.image_url_3,
+    product.image_url_4,
+    product.image_url_5,
+  ].map(getPathOrUrl);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,7 +86,7 @@ export function PostFoodForm() {
 
       const fileInput = form.querySelector<HTMLInputElement>('input[name="images"]');
       const files = fileInput?.files ? Array.from(fileInput.files).slice(0, MAX_IMAGES) : [];
-      const imagePaths: string[] = [];
+      const imagePaths: string[] = [...existingPaths];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -76,14 +100,17 @@ export function PostFoodForm() {
           setLoading(false);
           return;
         }
-        imagePaths.push(path);
+        imagePaths[i] = path;
       }
 
       const formData = new FormData(form);
       formData.delete("images");
-      imagePaths.forEach((path, i) => formData.set(`image_url_${i + 1}`, path));
+      for (let i = 0; i < MAX_IMAGES; i++) {
+        const path = imagePaths[i];
+        if (path) formData.set(`image_url_${i + 1}`, path);
+      }
 
-      const result = await submitProduct(undefined, formData);
+      const result = await updateProduct(product.id, formData);
       if (result?.error) {
         setError(result.error);
       } else {
@@ -91,7 +118,7 @@ export function PostFoodForm() {
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "投稿に失敗しました。");
+      setError(err instanceof Error ? err.message : "更新に失敗しました。");
     } finally {
       setLoading(false);
     }
@@ -113,6 +140,16 @@ export function PostFoodForm() {
     });
   }
 
+  const currentImageUrls = [
+    product.image_url_1,
+    product.image_url_2,
+    product.image_url_3,
+    product.image_url_4,
+    product.image_url_5,
+  ]
+    .filter(Boolean)
+    .map((path) => resolveProductImageSrc(path, ""));
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -130,6 +167,7 @@ export function PostFoodForm() {
           name="name"
           type="text"
           required
+          defaultValue={product.name}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="例: サラダチキン"
         />
@@ -143,6 +181,7 @@ export function PostFoodForm() {
           id="brand"
           name="brand"
           type="text"
+          defaultValue={product.brand ?? ""}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="例: 〇〇食品"
         />
@@ -158,6 +197,7 @@ export function PostFoodForm() {
           type="number"
           min={0}
           step={1}
+          defaultValue={product.price ?? ""}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="例: 298"
         />
@@ -171,6 +211,7 @@ export function PostFoodForm() {
           id="unit"
           name="unit"
           required
+          defaultValue={product.unit}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         >
           <option value="">選択してください</option>
@@ -193,6 +234,7 @@ export function PostFoodForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={product.calories ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
             placeholder="kcal"
           />
@@ -207,6 +249,7 @@ export function PostFoodForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={product.carbs ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           />
         </div>
@@ -220,6 +263,7 @@ export function PostFoodForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={product.protein ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           />
         </div>
@@ -233,6 +277,7 @@ export function PostFoodForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={product.fat ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           />
         </div>
@@ -245,6 +290,7 @@ export function PostFoodForm() {
         <select
           id="purpose"
           name="purpose"
+          defaultValue={product.purpose ?? ""}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         >
           {PURPOSE_OPTIONS.map((opt) => (
@@ -263,6 +309,7 @@ export function PostFoodForm() {
           id="comment"
           name="comment"
           rows={4}
+          defaultValue={product.comment ?? ""}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="食べた感想やおすすめポイント"
         />
@@ -272,6 +319,20 @@ export function PostFoodForm() {
         <label className="mb-1 block text-sm font-medium text-zinc-700">
           画像（最大5枚）
         </label>
+        {currentImageUrls.length > 0 && (
+          <p className="mb-2 text-xs text-zinc-500">現在の画像（新しいファイルを選ぶと差し替わります）</p>
+        )}
+        <div className="mb-2 flex flex-wrap gap-2">
+          {currentImageUrls.map((url, i) => (
+            <div
+              key={url}
+              className="h-20 w-20 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`現在 ${i + 1}`} className="h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
         <input
           name="images"
           type="file"
@@ -301,7 +362,7 @@ export function PostFoodForm() {
           disabled={loading}
           className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
-          {loading ? "投稿中..." : "投稿する"}
+          {loading ? "更新中..." : "更新する"}
         </button>
         <Link
           href="/mypage"

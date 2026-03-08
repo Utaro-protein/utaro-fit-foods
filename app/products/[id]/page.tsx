@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { resolveProductImageSrc } from "@/utils/productImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Product } from "@/types/product";
@@ -34,8 +35,8 @@ export default async function ProductPage({
   const product = await getProduct(id);
   if (!product) notFound();
 
-  const img1 = product.image_url_1;
-  const img2 = product.image_url_2;
+  const img1 = resolveProductImageSrc(product.image_url_1, "");
+  const img2 = resolveProductImageSrc(product.image_url_2, "");
   const cal = product.calories != null ? Math.round(Number(product.calories)) : null;
   const protein = product.protein != null ? Math.round(Number(product.protein)) : null;
   const fat = product.fat != null ? Math.round(Number(product.fat)) : null;
@@ -94,7 +95,12 @@ export default async function ProductPage({
         </h1>
         {product.brand && (
           <p className="mt-1 text-center text-sm text-zinc-500">
-            ブランド: {product.brand}
+            {product.brand}
+          </p>
+        )}
+        {product.price != null && (
+          <p className="mt-1 text-center text-sm font-medium text-zinc-700">
+            ¥{product.price.toLocaleString()}（税込）
           </p>
         )}
 

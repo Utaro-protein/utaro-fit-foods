@@ -28,9 +28,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <header className="border-b border-zinc-200 bg-white px-6 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+        <header className="bg-emerald-500 px-6 py-3 shadow-sm [&_a]:text-white [&_a]:hover:text-zinc-100 [&_button]:text-white [&_button]:hover:text-zinc-100 dark:bg-emerald-600 [&_span]:text-white">
           <div className="flex w-full items-center justify-between">
-            <a href="/" className="font-semibold text-zinc-900 dark:text-zinc-100">
+            <a href="/" className="font-semibold text-white dark:text-zinc-100">
               うたろうフィットフード
             </a>
             <AuthLinks />

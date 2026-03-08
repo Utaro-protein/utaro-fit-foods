@@ -5,6 +5,19 @@
   --foreground: #171717;
 }
 
+/* スマホ時は全体のフォントを小さく（640px以上で通常サイズ） */
+@media (max-width: 639px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 16px;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

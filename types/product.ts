@@ -5,6 +5,7 @@ export type Product = {
   name: string;
   brand: string | null;
   unit: string;
+  price: number | null;
   calories: number | null;
   carbs: number | null;
   protein: number | null;
