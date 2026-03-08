@@ -112,7 +112,7 @@ export function MypageView({
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-15 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -134,7 +134,7 @@ export function MypageView({
               <p className="text-zinc-500">お気に入りの食品はまだありません</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-15 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {favoriteProducts.map((product) => (
                 <ProductCard
                   key={`product-${product.id}`}

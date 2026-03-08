@@ -1,35 +1,49 @@
 import { createClient } from "@/utils/supabase/server";
 import { resolveProductImageSrc } from "@/utils/productImage";
 import { notFound } from "next/navigation";
-import type { Product } from "@/types/product";
 
-async function getProduct(id: string): Promise<Product | null> {
+type UtaroSelection = {
+  id: string;
+  name: string;
+  brand: string | null;
+  unit: string;
+  calories: number | null;
+  carbs: number | null;
+  protein: number | null;
+  fat: number | null;
+  purpose: string | null;
+  utaro_comment: string | null;
+  image_url_1: string | null;
+  image_url_2: string | null;
+};
+
+async function getSelection(id: string): Promise<UtaroSelection | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("products")
-    .select("*")
+    .from("utaro_selections")
+    .select("id, name, brand, unit, calories, protein, fat, carbs, purpose, utaro_comment, image_url_1, image_url_2")
     .eq("id", id)
     .single();
   if (error || !data) return null;
-  return data as Product;
+  return data as UtaroSelection;
 }
 
-export default async function ProductPage({
+export default async function SelectionPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProduct(id);
-  if (!product) notFound();
+  const selection = await getSelection(id);
+  if (!selection) notFound();
 
-  const img1 = resolveProductImageSrc(product.image_url_1, "");
-  const img2 = resolveProductImageSrc(product.image_url_2, "");
-  const cal = product.calories != null ? Math.round(Number(product.calories)) : null;
-  const protein = product.protein != null ? Math.round(Number(product.protein)) : null;
-  const fat = product.fat != null ? Math.round(Number(product.fat)) : null;
-  const carbs = product.carbs != null ? Math.round(Number(product.carbs)) : null;
-  const purpose = product.purpose ?? "";
+  const img1 = resolveProductImageSrc(selection.image_url_1, "");
+  const img2 = resolveProductImageSrc(selection.image_url_2, "");
+  const cal = selection.calories != null ? Math.round(Number(selection.calories)) : null;
+  const protein = selection.protein != null ? Math.round(Number(selection.protein)) : null;
+  const fat = selection.fat != null ? Math.round(Number(selection.fat)) : null;
+  const carbs = selection.carbs != null ? Math.round(Number(selection.carbs)) : null;
+  const purpose = selection.purpose ?? "";
   const purposeBadgeClass = purpose === "増量"
     ? "bg-red-500 text-white"
     : purpose === "減量"
@@ -37,10 +51,7 @@ export default async function ProductPage({
       : purpose === "維持期"
         ? "bg-orange-500 text-white"
         : "bg-zinc-200 text-zinc-700";
-  const commentText =
-    product.utaro_select && product.utaro_comment
-      ? product.utaro_comment
-      : product.comment;
+
   const nutritionItems = [
     { label: "カロリー", value: cal != null ? `${cal} kcal` : null },
     { label: "たんぱく質", value: protein != null ? `${protein} g` : null },
@@ -59,7 +70,7 @@ export default async function ProductPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={img1}
-                    alt={product.name}
+                    alt={selection.name}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -71,7 +82,7 @@ export default async function ProductPage({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img2}
-                    alt={`${product.name}（盛り付け）`}
+                    alt={`${selection.name}（盛り付け）`}
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -79,28 +90,18 @@ export default async function ProductPage({
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
-                {product.name}
-              </h1>
-              {product.brand && (
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+                  {selection.name}
+                </h1>
+              </div>
+              {selection.brand && (
                 <p className="mt-2 text-sm text-zinc-500 sm:text-base">
-                  {product.brand}
+                  {selection.brand}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {product.price != null && (
-                  <p className="inline-flex rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 sm:text-sm">
-                    ¥{product.price.toLocaleString()}（税込）
-                  </p>
-                )}
-                {product.utaro_select && (
-                  <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
-                    うたろうセレクト
-                  </span>
-                )}
-              </div>
               <p className="mt-3 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 sm:text-sm">
-                栄養情報は{product.unit}あたり
+                栄養情報は{selection.unit}あたり
               </p>
             </div>
           </div>
@@ -142,18 +143,16 @@ export default async function ProductPage({
           )}
         </section>
 
-        {/* コメントカード */}
-        {(product.utaro_select && product.utaro_comment) || product.comment ? (
+        {/* うたろうのレビュー */}
+        {selection.utaro_comment ? (
           <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-800 sm:text-lg">
               <span className="text-zinc-500">💬</span>
-              {product.utaro_select && product.utaro_comment
-                ? "うたろう解説"
-                : "コメント"}
+              うたろうのレビュー
             </h2>
             <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4">
               <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-700 sm:text-base">
-                {commentText}
+                {selection.utaro_comment}
               </p>
             </div>
           </section>

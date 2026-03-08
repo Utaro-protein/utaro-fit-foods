@@ -29,7 +29,7 @@ export function SelectionCard({ selection, favoriteKey }: Props) {
   return (
     <Link
       href={`/selections/${selection.id}`}
-      className="flex w-[170px] shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-200/80 bg-white/90 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800"
+      className="flex w-full flex-col overflow-hidden rounded-xl border border-zinc-200/80 bg-white/90 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800"
     >
       <div className="relative h-[95px] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-700">
         {imageUrl ? (
