@@ -35,13 +35,15 @@ export function PostFoodForm() {
     const form = formRef.current;
     if (!form) return;
 
-    const name = (form.name as HTMLInputElement).value.trim();
+    const nameInput = form.elements.namedItem("name") as HTMLInputElement | null;
+    const name = nameInput?.value.trim() ?? "";
     if (!name) {
       setError("食品名を入力してください。");
       return;
     }
 
-    const unit = (form.unit as HTMLSelectElement).value;
+    const unitSelect = form.elements.namedItem("unit") as HTMLSelectElement | null;
+    const unit = unitSelect?.value ?? "";
     if (!unit) {
       setError("基準を選択してください。");
       return;
