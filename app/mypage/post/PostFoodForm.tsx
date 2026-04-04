@@ -20,14 +20,16 @@ const PURPOSE_OPTIONS = [
   { value: "維持期", label: "維持期" },
 ] as const;
 
-const MAX_IMAGES = 5;
+const MAX_IMAGES = 1;
 
 export function PostFoodForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const mainImageInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [mainImageStatus, setMainImageStatus] = useState("未選択");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,16 +105,25 @@ export function PostFoodForm() {
     const files = e.target.files;
     if (!files?.length) {
       setPreviews([]);
+      setMainImageStatus("未選択");
       return;
     }
-    const urls: string[] = [];
-    for (let i = 0; i < Math.min(files.length, MAX_IMAGES); i++) {
-      urls.push(URL.createObjectURL(files[i]));
-    }
+    const file = files[0];
+    setMainImageStatus(file.name);
+    const urls = [URL.createObjectURL(file)];
     setPreviews((prev) => {
       prev.forEach(URL.revokeObjectURL);
       return urls;
     });
+  }
+
+  function clearMainImage() {
+    setPreviews((prev) => {
+      prev.forEach(URL.revokeObjectURL);
+      return [];
+    });
+    setMainImageStatus("未選択");
+    if (mainImageInputRef.current) mainImageInputRef.current.value = "";
   }
 
   return (
@@ -272,27 +283,44 @@ export function PostFoodForm() {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-zinc-700">
-          画像（最大5枚）
+          メイン画像
         </label>
-        <input
-          name="images"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onChange={handleFileChange}
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-600 file:mr-3 file:rounded file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-zinc-700"
-        />
-        {previews.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {previews.map((url, i) => (
-              <div
-                key={url}
-                className="h-20 w-20 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`プレビュー ${i + 1}`} className="h-full w-full object-cover" />
-              </div>
-            ))}
+        {previews.length === 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor="food-main-image"
+              className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              写真を選択（任意）
+            </label>
+            <input
+              ref={mainImageInputRef}
+              id="food-main-image"
+              name="images"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleFileChange}
+            />
+            <span className="text-sm text-zinc-500">{mainImageStatus}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previews[0]}
+                alt="メイン画像のプレビュー"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={clearMainImage}
+              className="text-xs text-zinc-600 underline hover:text-zinc-900"
+            >
+              写真を削除
+            </button>
           </div>
         )}
       </div>

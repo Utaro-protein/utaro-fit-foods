@@ -1,9 +1,11 @@
 "use client";
 
 import { ProductCard } from "@/app/components/ProductCard";
+import { RecipeCard } from "@/app/components/RecipeCard";
 import type { SelectionCardItem } from "@/app/components/SelectionCard";
 import { SelectionCard } from "@/app/components/SelectionCard";
 import type { Product } from "@/types/product";
+import type { RecipeListItem } from "@/types/recipe";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -12,6 +14,7 @@ type Props = {
   handle: string;
   joinedAt: string | null;
   products: Product[];
+  recipes: RecipeListItem[];
   favoriteProducts: Product[];
   favoriteSelections: SelectionCardItem[];
 };
@@ -21,10 +24,12 @@ export function MypageView({
   handle,
   joinedAt,
   products,
+  recipes,
   favoriteProducts,
   favoriteSelections,
 }: Props) {
   const [tab, setTab] = useState<"posts" | "favorites">("posts");
+  const [postKind, setPostKind] = useState<"food" | "recipe">("food");
 
   return (
     <main className="min-h-screen bg-zinc-50">
@@ -98,30 +103,78 @@ export function MypageView({
       {/* タブコンテンツ */}
       {tab === "posts" && (
         <div className="mx-auto max-w-2xl p-4">
-          {products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
-              <span className="mb-4 text-4xl" aria-hidden>
-                🍽️
-              </span>
-              <p className="text-zinc-500">まだ投稿がありません</p>
-              <Link
-                href="/mypage/post"
-                className="mt-5 rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800"
-              >
-                食品を投稿する
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  editHref={`/mypage/post/${product.id}/edit`}
-                />
-              ))}
-            </div>
-          )}
+          <div className="mb-4 inline-flex rounded-lg border border-zinc-300 bg-zinc-100 p-1">
+            <button
+              type="button"
+              onClick={() => setPostKind("food")}
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                postKind === "food"
+                  ? "bg-white text-zinc-900 shadow-sm"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              食品
+            </button>
+            <button
+              type="button"
+              onClick={() => setPostKind("recipe")}
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                postKind === "recipe"
+                  ? "bg-white text-zinc-900 shadow-sm"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              レシピ
+            </button>
+          </div>
+
+          {postKind === "food" &&
+            (products.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
+                <span className="mb-4 text-4xl" aria-hidden>
+                  🍽️
+                </span>
+                <p className="text-zinc-500">食品の投稿はまだありません</p>
+                <Link
+                  href="/mypage/post"
+                  className="mt-5 rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800"
+                >
+                  食品を投稿する
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    editHref={`/mypage/post/${product.id}/edit`}
+                  />
+                ))}
+              </div>
+            ))}
+
+          {postKind === "recipe" &&
+            (recipes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
+                <span className="mb-4 text-4xl" aria-hidden>
+                  📖
+                </span>
+                <p className="text-zinc-500">レシピの投稿はまだありません</p>
+                <Link
+                  href="/mypage/post"
+                  className="mt-5 rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800"
+                >
+                  レシピを投稿する
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                {recipes.map((recipe) => (
+                  <RecipeCard key={recipe.id} recipe={recipe} />
+                ))}
+              </div>
+            ))}
         </div>
       )}
       {tab === "favorites" && (

@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PostFoodForm } from "./PostFoodForm";
+import { PostTypeSwitcher } from "./PostTypeSwitcher";
 
 export default async function MypagePost() {
   const supabase = await createClient();
@@ -19,9 +19,9 @@ export default async function MypagePost() {
         >
           ← マイページへ
         </Link>
-        <h1 className="mb-6 text-xl font-bold text-zinc-900">食品を投稿</h1>
+        <h1 className="mb-6 text-xl font-bold text-zinc-900">投稿を作成</h1>
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <PostFoodForm />
+          <PostTypeSwitcher />
         </div>
       </div>
     </main>

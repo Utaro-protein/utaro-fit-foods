@@ -22,7 +22,7 @@ const PURPOSE_OPTIONS = [
   { value: "維持期", label: "維持期" },
 ] as const;
 
-const MAX_IMAGES = 5;
+const MAX_IMAGES = 1;
 
 function getPathOrUrl(value: string | null | undefined): string {
   if (!value) return "";
@@ -45,13 +45,7 @@ export function EditProductForm({ product }: Props) {
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  const existingPaths = [
-    product.image_url_1,
-    product.image_url_2,
-    product.image_url_3,
-    product.image_url_4,
-    product.image_url_5,
-  ].map(getPathOrUrl);
+  const existingPaths = [getPathOrUrl(product.image_url_1)];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -142,15 +136,9 @@ export function EditProductForm({ product }: Props) {
     });
   }
 
-  const currentImageUrls = [
-    product.image_url_1,
-    product.image_url_2,
-    product.image_url_3,
-    product.image_url_4,
-    product.image_url_5,
-  ]
-    .filter(Boolean)
-    .map((path) => resolveProductImageSrc(path, ""));
+  const currentImageUrls = product.image_url_1
+    ? [resolveProductImageSrc(product.image_url_1, "")]
+    : [];
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
@@ -319,7 +307,7 @@ export function EditProductForm({ product }: Props) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-zinc-700">
-          画像（最大5枚）
+          メイン画像
         </label>
         {currentImageUrls.length > 0 && (
           <p className="mb-2 text-xs text-zinc-500">現在の画像（新しいファイルを選ぶと差し替わります）</p>
@@ -339,7 +327,6 @@ export function EditProductForm({ product }: Props) {
           name="images"
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          multiple
           onChange={handleFileChange}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-600 file:mr-3 file:rounded file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-zinc-700"
         />

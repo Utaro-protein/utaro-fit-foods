@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import type { Product } from "@/types/product";
+import type { RecipeListItem } from "@/types/recipe";
 import { MypageView } from "./components/MypageView";
 
 async function getMyProducts(userId: string): Promise<Product[]> {
@@ -12,6 +13,17 @@ async function getMyProducts(userId: string): Promise<Product[]> {
     .order("created_at", { ascending: false });
   if (error) return [];
   return (data ?? []) as Product[];
+}
+
+async function getMyRecipes(userId: string): Promise<RecipeListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("recipes")
+    .select("id, created_by, created_at, title, image_url_1, calories, carbs, protein, fat")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as RecipeListItem[];
 }
 
 type FavoriteRow = { target_type: string; target_id: string };
@@ -69,9 +81,10 @@ export default async function Mypage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [products, { products: favoriteProducts, selections: favoriteSelections }] =
+  const [products, recipes, { products: favoriteProducts, selections: favoriteSelections }] =
     await Promise.all([
       getMyProducts(user.id),
+      getMyRecipes(user.id),
       getFavoriteProductsAndSelections(user.id),
     ]);
 
@@ -87,6 +100,7 @@ export default async function Mypage() {
       handle={handle}
       joinedAt={joinedAt}
       products={products}
+      recipes={recipes}
       favoriteProducts={favoriteProducts}
       favoriteSelections={favoriteSelections}
     />
