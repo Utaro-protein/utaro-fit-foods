@@ -11,6 +11,7 @@ type UtaroSelection = {
   carbs: number | null;
   protein: number | null;
   fat: number | null;
+  price: number | null;
   purpose: string | null;
   utaro_comment: string | null;
   image_url_1: string | null;
@@ -21,7 +22,7 @@ async function getSelection(id: string): Promise<UtaroSelection | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("utaro_selections")
-    .select("id, name, brand, unit, calories, protein, fat, carbs, purpose, utaro_comment, image_url_1, image_url_2")
+    .select("id, name, brand, unit, calories, protein, fat, carbs, price, purpose, utaro_comment, image_url_1, image_url_2")
     .eq("id", id)
     .single();
   if (error || !data) return null;
@@ -43,6 +44,8 @@ export default async function SelectionPage({
   const protein = selection.protein != null ? Math.round(Number(selection.protein)) : null;
   const fat = selection.fat != null ? Math.round(Number(selection.fat)) : null;
   const carbs = selection.carbs != null ? Math.round(Number(selection.carbs)) : null;
+  const price =
+    selection.price != null ? Math.round(Number(selection.price)) : null;
   const purpose = selection.purpose ?? "";
   const purposeBadgeClass = purpose === "増量"
     ? "bg-red-500 text-white"
@@ -98,6 +101,11 @@ export default async function SelectionPage({
               {selection.brand && (
                 <p className="mt-2 text-sm text-zinc-500 sm:text-base">
                   {selection.brand}
+                </p>
+              )}
+              {price != null && (
+                <p className="mt-2 text-lg font-semibold text-zinc-900 sm:text-xl">
+                  ¥{price.toLocaleString()}（税込想定）
                 </p>
               )}
               <p className="mt-3 inline-flex rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 sm:text-sm">
