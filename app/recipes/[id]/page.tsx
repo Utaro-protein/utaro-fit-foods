@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
 import { resolveProductImageSrc } from "@/utils/productImage";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { RecipeListItem } from "@/types/recipe";
 
@@ -79,13 +78,6 @@ export default async function RecipePage({
   return (
     <main className="min-h-screen bg-zinc-50 pb-12">
       <div className="mx-auto w-full max-w-4xl px-4 py-5 sm:px-6 sm:py-8">
-        <Link
-          href="/mypage"
-          className="mb-4 inline-block text-sm text-zinc-600 hover:underline"
-        >
-          ← マイページへ
-        </Link>
-
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="grid gap-5 md:grid-cols-[minmax(0,280px)_1fr] md:items-start">
             <div className="aspect-square max-h-[280px] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">

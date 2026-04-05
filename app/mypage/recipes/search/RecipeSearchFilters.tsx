@@ -1,10 +1,9 @@
 "use client";
 
 import * as Slider from "@radix-ui/react-slider";
-import type { SelectionSearchBounds } from "@/types/utaroSelection";
-import type { RangeState } from "./selectionSearchRange";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import type { RangeState, RecipeSearchBounds } from "./recipeSearchRange";
 
 const STEP = 10;
 
@@ -24,16 +23,12 @@ function snapPair(
   return [Math.min(a, b), Math.max(a, b)];
 }
 
-function snapRangeState(
-  r: RangeState,
-  b: SelectionSearchBounds
-): RangeState {
+function snapRangeState(r: RangeState, b: RecipeSearchBounds): RangeState {
   return {
     calories: snapPair(r.calories[0], r.calories[1], b.calories.min, b.calories.max),
     protein: snapPair(r.protein[0], r.protein[1], b.protein.min, b.protein.max),
     fat: snapPair(r.fat[0], r.fat[1], b.fat.min, b.fat.max),
     carbs: snapPair(r.carbs[0], r.carbs[1], b.carbs.min, b.carbs.max),
-    price: snapPair(r.price[0], r.price[1], b.price.min, b.price.max),
   };
 }
 
@@ -47,8 +42,6 @@ function buildQueryString(r: RangeState): string {
   p.set("fatMax", String(r.fat[1]));
   p.set("carbMin", String(r.carbs[0]));
   p.set("carbMax", String(r.carbs[1]));
-  p.set("priceMin", String(r.price[0]));
-  p.set("priceMax", String(r.price[1]));
   return p.toString();
 }
 
@@ -116,22 +109,15 @@ function DualRangeRow({
 }
 
 type Props = {
-  bounds: SelectionSearchBounds;
+  bounds: RecipeSearchBounds;
   ranges: RangeState;
-  /** 絞り込み・クリア後の URL 更新のあとに呼ぶ（例: モーダルを閉じる） */
   onAfterNavigate?: () => void;
 };
 
-export function SelectionSearchFilters({
-  bounds,
-  ranges,
-  onAfterNavigate,
-}: Props) {
+export function RecipeSearchFilters({ bounds, ranges, onAfterNavigate }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [local, setLocal] = useState<RangeState>(() =>
-    snapRangeState(ranges, bounds)
-  );
+  const [local, setLocal] = useState<RangeState>(() => snapRangeState(ranges, bounds));
 
   useEffect(() => {
     setLocal(snapRangeState(ranges, bounds));
@@ -149,7 +135,6 @@ export function SelectionSearchFilters({
         protein: [bounds.protein.min, bounds.protein.max],
         fat: [bounds.fat.min, bounds.fat.max],
         carbs: [bounds.carbs.min, bounds.carbs.max],
-        price: [bounds.price.min, bounds.price.max],
       },
       bounds
     );
@@ -191,14 +176,6 @@ export function SelectionSearchFilters({
         lo={local.carbs[0]}
         hi={local.carbs[1]}
         onChange={(next) => setLocal((s) => ({ ...s, carbs: next }))}
-      />
-      <DualRangeRow
-        label="金額"
-        unit=" 円"
-        bounds={bounds.price}
-        lo={local.price[0]}
-        hi={local.price[1]}
-        onChange={(next) => setLocal((s) => ({ ...s, price: next }))}
       />
       <div className="flex flex-wrap gap-2 pt-1">
         <button

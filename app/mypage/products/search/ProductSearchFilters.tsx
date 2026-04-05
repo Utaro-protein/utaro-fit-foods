@@ -2,7 +2,7 @@
 
 import * as Slider from "@radix-ui/react-slider";
 import type { SelectionSearchBounds } from "@/types/utaroSelection";
-import type { RangeState } from "./selectionSearchRange";
+import type { RangeState } from "./productSearchRange";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -24,10 +24,7 @@ function snapPair(
   return [Math.min(a, b), Math.max(a, b)];
 }
 
-function snapRangeState(
-  r: RangeState,
-  b: SelectionSearchBounds
-): RangeState {
+function snapRangeState(r: RangeState, b: SelectionSearchBounds): RangeState {
   return {
     calories: snapPair(r.calories[0], r.calories[1], b.calories.min, b.calories.max),
     protein: snapPair(r.protein[0], r.protein[1], b.protein.min, b.protein.max),
@@ -118,20 +115,13 @@ function DualRangeRow({
 type Props = {
   bounds: SelectionSearchBounds;
   ranges: RangeState;
-  /** 絞り込み・クリア後の URL 更新のあとに呼ぶ（例: モーダルを閉じる） */
   onAfterNavigate?: () => void;
 };
 
-export function SelectionSearchFilters({
-  bounds,
-  ranges,
-  onAfterNavigate,
-}: Props) {
+export function ProductSearchFilters({ bounds, ranges, onAfterNavigate }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [local, setLocal] = useState<RangeState>(() =>
-    snapRangeState(ranges, bounds)
-  );
+  const [local, setLocal] = useState<RangeState>(() => snapRangeState(ranges, bounds));
 
   useEffect(() => {
     setLocal(snapRangeState(ranges, bounds));

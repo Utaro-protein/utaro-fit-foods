@@ -20,6 +20,16 @@ const navItems: NavItem[] = [
     label: "うたろう厳選",
     match: (pathname) => pathname.startsWith("/selections"),
   },
+  {
+    href: "/mypage/products/search",
+    label: "食品投稿検索",
+    match: (pathname) => pathname.startsWith("/mypage/products/search"),
+  },
+  {
+    href: "/mypage/recipes/search",
+    label: "レシピ投稿検索",
+    match: (pathname) => pathname.startsWith("/mypage/recipes/search"),
+  },
 ];
 
 export function SidebarNav() {

@@ -1,19 +1,22 @@
 import { createClient } from "@/utils/supabase/server";
-import type {
-  NumericBounds,
-  SelectionSearchBounds,
-  UtaroSelectionListItem,
-} from "@/types/utaroSelection";
-import type { RangeState } from "./selectionSearchRange";
+import type { NumericBounds } from "@/types/utaroSelection";
+import type { RangeState, RecipeSearchBounds } from "./recipeSearchRange";
 
-export type { RangeState } from "./selectionSearchRange";
+type RecipeSearchListItem = {
+  id: string;
+  title: string;
+  image_url_1: string | null;
+  calories: number | null;
+  protein: number | null;
+  fat: number | null;
+  carbs: number | null;
+};
 
 type NumericRow = {
   calories: number | null;
   protein: number | null;
   fat: number | null;
   carbs: number | null;
-  price: number | null;
 };
 
 function boundsFromValues(values: number[]): NumericBounds {
@@ -40,21 +43,21 @@ function collectNumeric(rows: NumericRow[], key: keyof NumericRow): number[] {
   return out;
 }
 
-const EMPTY_DEFAULTS: SelectionSearchBounds = {
+const DEFAULT_BOUNDS: RecipeSearchBounds = {
   calories: { min: 0, max: 2000 },
   protein: { min: 0, max: 120 },
   fat: { min: 0, max: 120 },
   carbs: { min: 0, max: 200 },
-  price: { min: 0, max: 3000 },
 };
 
-export async function getUtaroSelectionBounds(): Promise<SelectionSearchBounds> {
+export async function getMyRecipeBounds(userId: string): Promise<RecipeSearchBounds> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("utaro_selections")
-    .select("calories, protein, fat, carbs, price");
+    .from("recipes")
+    .select("calories, protein, fat, carbs")
+    .eq("created_by", userId);
   if (error || !data?.length) {
-    return EMPTY_DEFAULTS;
+    return DEFAULT_BOUNDS;
   }
   const rows = data as NumericRow[];
   return {
@@ -68,9 +71,6 @@ export async function getUtaroSelectionBounds(): Promise<SelectionSearchBounds> 
     carbs: forceZeroMin(
       normalizeBounds(boundsFromValues(collectNumeric(rows, "carbs")))
     ),
-    price: forceZeroMin(
-      normalizeBounds(boundsFromValues(collectNumeric(rows, "price")))
-    ),
   };
 }
 
@@ -78,16 +78,14 @@ function fullRange(lo: number, hi: number, b: NumericBounds): boolean {
   return lo <= b.min && hi >= b.max;
 }
 
-function first(
-  v: string | string[] | undefined
-): string | undefined {
+function first(v: string | string[] | undefined): string | undefined {
   if (v === undefined) return undefined;
   return Array.isArray(v) ? v[0] : v;
 }
 
-export type ParsedPair = { lo: number; hi: number; apply: boolean };
+type ParsedPair = { lo: number; hi: number; apply: boolean };
 
-export function parsePair(
+function parsePair(
   params: Record<string, string | string[] | undefined>,
   keyMin: string,
   keyMax: string,
@@ -113,40 +111,36 @@ export function parsePair(
 
 export function rangesFromSearchParams(
   params: Record<string, string | string[] | undefined>,
-  bounds: SelectionSearchBounds
+  bounds: RecipeSearchBounds
 ): RangeState {
   const c = parsePair(params, "calMin", "calMax", bounds.calories);
   const p = parsePair(params, "proteinMin", "proteinMax", bounds.protein);
   const f = parsePair(params, "fatMin", "fatMax", bounds.fat);
   const cb = parsePair(params, "carbMin", "carbMax", bounds.carbs);
-  const pr = parsePair(params, "priceMin", "priceMax", bounds.price);
   return {
     calories: [c.lo, c.hi],
     protein: [p.lo, p.hi],
     fat: [f.lo, f.hi],
     carbs: [cb.lo, cb.hi],
-    price: [pr.lo, pr.hi],
   };
 }
 
-export async function searchUtaroSelections(
+export async function searchMyRecipes(
+  userId: string,
   params: Record<string, string | string[] | undefined>,
-  bounds: SelectionSearchBounds
-): Promise<UtaroSelectionListItem[]> {
+  bounds: RecipeSearchBounds
+): Promise<RecipeSearchListItem[]> {
   const cal = parsePair(params, "calMin", "calMax", bounds.calories);
   const pro = parsePair(params, "proteinMin", "proteinMax", bounds.protein);
   const fat = parsePair(params, "fatMin", "fatMax", bounds.fat);
   const carb = parsePair(params, "carbMin", "carbMax", bounds.carbs);
-  const price = parsePair(params, "priceMin", "priceMax", bounds.price);
 
   const supabase = await createClient();
   let q = supabase
-    .from("utaro_selections")
-    .select(
-      "id, name, brand, calories, protein, fat, carbs, price, image_url_1, display_order"
-    )
-    .order("display_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
+    .from("recipes")
+    .select("id, title, image_url_1, calories, protein, fat, carbs, created_at")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false });
 
   if (cal.apply) {
     q = q.gte("calories", cal.lo).lte("calories", cal.hi);
@@ -160,11 +154,8 @@ export async function searchUtaroSelections(
   if (carb.apply) {
     q = q.gte("carbs", carb.lo).lte("carbs", carb.hi);
   }
-  if (price.apply) {
-    q = q.gte("price", price.lo).lte("price", price.hi);
-  }
 
   const { data, error } = await q;
   if (error) return [];
-  return (data ?? []) as UtaroSelectionListItem[];
+  return (data ?? []) as RecipeSearchListItem[];
 }
