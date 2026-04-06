@@ -57,12 +57,11 @@ const DEFAULT_BOUNDS: SelectionSearchBounds = {
   price: { min: 0, max: 3000 },
 };
 
-export async function getMyProductBounds(userId: string): Promise<SelectionSearchBounds> {
+export async function getProductBounds(): Promise<SelectionSearchBounds> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("calories, protein, fat, carbs, price")
-    .eq("created_by", userId);
+    .select("calories, protein, fat, carbs, price");
 
   if (error || !data?.length) {
     return DEFAULT_BOUNDS;
@@ -139,8 +138,7 @@ export function rangesFromSearchParams(
   };
 }
 
-export async function searchMyProducts(
-  userId: string,
+export async function searchProducts(
   params: Record<string, string | string[] | undefined>,
   bounds: SelectionSearchBounds
 ): Promise<ProductSearchListItem[]> {
@@ -154,7 +152,6 @@ export async function searchMyProducts(
   let q = supabase
     .from("products")
     .select("id, name, brand, calories, protein, fat, carbs, price, image_url_1, created_at")
-    .eq("created_by", userId)
     .order("created_at", { ascending: false });
 
   if (cal.apply) {

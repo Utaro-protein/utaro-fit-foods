@@ -50,12 +50,11 @@ const DEFAULT_BOUNDS: RecipeSearchBounds = {
   carbs: { min: 0, max: 200 },
 };
 
-export async function getMyRecipeBounds(userId: string): Promise<RecipeSearchBounds> {
+export async function getRecipeBounds(): Promise<RecipeSearchBounds> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("recipes")
-    .select("calories, protein, fat, carbs")
-    .eq("created_by", userId);
+    .select("calories, protein, fat, carbs");
   if (error || !data?.length) {
     return DEFAULT_BOUNDS;
   }
@@ -125,8 +124,7 @@ export function rangesFromSearchParams(
   };
 }
 
-export async function searchMyRecipes(
-  userId: string,
+export async function searchRecipes(
   params: Record<string, string | string[] | undefined>,
   bounds: RecipeSearchBounds
 ): Promise<RecipeSearchListItem[]> {
@@ -139,7 +137,6 @@ export async function searchMyRecipes(
   let q = supabase
     .from("recipes")
     .select("id, title, image_url_1, calories, protein, fat, carbs, created_at")
-    .eq("created_by", userId)
     .order("created_at", { ascending: false });
 
   if (cal.apply) {

@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { FavoriteButton } from "@/app/components/FavoriteButton";
 import { resolveProductImageSrc } from "@/utils/productImage";
 import { createClient } from "@/utils/supabase/server";
 import { ProductSearchDialog } from "./ProductSearchDialog";
 import {
-  getMyProductBounds,
+  getProductBounds,
   rangesFromSearchParams,
-  searchMyProducts,
+  searchProducts,
 } from "./searchQueries";
 
 export default async function MyProductSearchPage({
@@ -19,18 +18,22 @@ export default async function MyProductSearchPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   const sp = await searchParams;
-  const bounds = await getMyProductBounds(user.id);
-  const rows = await searchMyProducts(user.id, sp, bounds);
+  const bounds = await getProductBounds();
+  const rows = await searchProducts(sp, bounds);
   const ranges = rangesFromSearchParams(sp, bounds);
-  const { data: favoriteRows } = await supabase
-    .from("favorites")
-    .select("target_id")
-    .eq("user_id", user.id)
-    .eq("target_type", "product");
-  const productFavIds = new Set((favoriteRows ?? []).map((r) => String(r.target_id)));
+  const productFavIds = new Set<string>();
+  if (user) {
+    const { data: favoriteRows } = await supabase
+      .from("favorites")
+      .select("target_id")
+      .eq("user_id", user.id)
+      .eq("target_type", "product");
+    for (const row of favoriteRows ?? []) {
+      if (row?.target_id) productFavIds.add(String(row.target_id));
+    }
+  }
 
   return (
     <main className="min-h-screen bg-zinc-50 pb-16">
@@ -62,11 +65,13 @@ export default async function MyProductSearchPage({
                     <div className="relative w-full shrink-0 overflow-hidden bg-zinc-100 aspect-[4/3]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img} alt={row.name} className="h-full w-full object-cover" />
-                      <FavoriteButton
-                        targetType="product"
-                        targetId={row.id}
-                        initialChecked={productFavIds.has(row.id)}
-                      />
+                      {user && (
+                        <FavoriteButton
+                          targetType="product"
+                          targetId={row.id}
+                          initialChecked={productFavIds.has(row.id)}
+                        />
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3">
                       <div className="min-w-0">

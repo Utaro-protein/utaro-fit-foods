@@ -37,7 +37,7 @@ export function RecipeSearchDialog({ bounds, ranges }: Props) {
                   検索条件
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-zinc-600">
-                  自分のレシピ投稿を、カロリー・PFCで絞り込みます。
+                  レシピ投稿を、カロリー・PFCで絞り込みます。
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>

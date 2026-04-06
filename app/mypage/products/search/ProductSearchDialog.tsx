@@ -38,7 +38,7 @@ export function ProductSearchDialog({ bounds, ranges }: Props) {
                   検索条件
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-zinc-600">
-                  自分の食品投稿を、カロリー・PFC・金額で絞り込みます。
+                  食品投稿を、カロリー・PFC・金額で絞り込みます。
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
