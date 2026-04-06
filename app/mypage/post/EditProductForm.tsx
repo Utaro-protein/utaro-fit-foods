@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { resolveProductImageSrc } from "@/utils/productImage";
-import { updateProduct } from "./actions";
+import { deleteProduct, updateProduct } from "./actions";
 import type { Product } from "@/types/product";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,9 +41,15 @@ type Props = { product: Product };
 export function EditProductForm({ product }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const mainImageInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [mainImageStatus, setMainImageStatus] = useState(
+    product.image_url_1 ? "現在の画像を使用中" : "未選択"
+  );
 
   const existingPaths = [getPathOrUrl(product.image_url_1)];
 
@@ -124,16 +130,40 @@ export function EditProductForm({ product }: Props) {
     const files = e.target.files;
     if (!files?.length) {
       setPreviews([]);
+      setMainImageStatus(product.image_url_1 ? "現在の画像を使用中" : "未選択");
       return;
     }
-    const urls: string[] = [];
-    for (let i = 0; i < Math.min(files.length, MAX_IMAGES); i++) {
-      urls.push(URL.createObjectURL(files[i]));
-    }
+    const file = files[0];
+    setMainImageStatus(file.name);
+    const urls = [URL.createObjectURL(file)];
     setPreviews((prev) => {
       prev.forEach(URL.revokeObjectURL);
       return urls;
     });
+  }
+
+  function clearMainImage() {
+    setPreviews((prev) => {
+      prev.forEach(URL.revokeObjectURL);
+      return [];
+    });
+    setMainImageStatus(product.image_url_1 ? "現在の画像を使用中" : "未選択");
+    if (mainImageInputRef.current) mainImageInputRef.current.value = "";
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteProduct(product.id);
+    if (result.error) {
+      setError(result.error);
+      setDeleting(false);
+      return;
+    }
+    setIsDeleteOpen(false);
+    router.push("/mypage");
+    router.refresh();
   }
 
   const currentImageUrls = product.image_url_1
@@ -309,38 +339,51 @@ export function EditProductForm({ product }: Props) {
         <label className="mb-1 block text-sm font-medium text-zinc-700">
           メイン画像
         </label>
-        {currentImageUrls.length > 0 && (
-          <p className="mb-2 text-xs text-zinc-500">現在の画像（新しいファイルを選ぶと差し替わります）</p>
-        )}
-        <div className="mb-2 flex flex-wrap gap-2">
-          {currentImageUrls.map((url, i) => (
-            <div
-              key={url}
-              className="h-20 w-20 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`現在 ${i + 1}`} className="h-full w-full object-cover" />
-            </div>
-          ))}
-        </div>
         <input
+          ref={mainImageInputRef}
+          id="food-main-image"
           name="images"
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
           onChange={handleFileChange}
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-600 file:mr-3 file:rounded file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-zinc-700"
         />
-        {previews.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {previews.map((url, i) => (
-              <div
-                key={url}
-                className="h-20 w-20 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100"
+        {previews.length === 0 ? (
+          <div className="space-y-2">
+            {currentImageUrls.length > 0 && (
+              <>
+                <p className="text-xs text-zinc-500">
+                  現在の画像（新しいファイルを選ぶと差し替わります）
+                </p>
+                <div className="h-16 w-16 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={currentImageUrls[0]} alt="現在のメイン画像" className="h-full w-full object-cover" />
+                </div>
+              </>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="food-main-image"
+                className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`プレビュー ${i + 1}`} className="h-full w-full object-cover" />
-              </div>
-            ))}
+                写真を選択（任意）
+              </label>
+              <span className="text-sm text-zinc-500">{mainImageStatus}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previews[0]} alt="メイン画像のプレビュー" className="h-full w-full object-cover" />
+            </div>
+            <button
+              type="button"
+              onClick={clearMainImage}
+              className="text-xs text-zinc-600 underline hover:text-zinc-900"
+            >
+              写真を削除
+            </button>
           </div>
         )}
       </div>
@@ -359,7 +402,45 @@ export function EditProductForm({ product }: Props) {
         >
           キャンセル
         </Link>
+        <button
+          type="button"
+          onClick={() => setIsDeleteOpen(true)}
+          className="ml-auto rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50"
+        >
+          投稿を削除
+        </button>
       </div>
+
+      {isDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-zinc-900">
+              この投稿を削除しますか？
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              この操作は取り消せません。食品投稿「{product.name}」が削除されます。
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={deleting}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "削除中..." : "削除する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

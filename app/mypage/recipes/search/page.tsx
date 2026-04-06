@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { FavoriteButton } from "@/app/components/FavoriteButton";
 import { resolveProductImageSrc } from "@/utils/productImage";
 import { createClient } from "@/utils/supabase/server";
 import { RecipeSearchDialog } from "./RecipeSearchDialog";
@@ -24,6 +25,12 @@ export default async function MyRecipeSearchPage({
   const bounds = await getMyRecipeBounds(user.id);
   const rows = await searchMyRecipes(user.id, sp, bounds);
   const ranges = rangesFromSearchParams(sp, bounds);
+  const { data: favoriteRows } = await supabase
+    .from("favorites")
+    .select("target_id")
+    .eq("user_id", user.id)
+    .eq("target_type", "recipe");
+  const recipeFavIds = new Set((favoriteRows ?? []).map((r) => String(r.target_id)));
 
   return (
     <main className="min-h-screen bg-zinc-50 pb-16">
@@ -32,15 +39,6 @@ export default async function MyRecipeSearchPage({
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
             レシピ投稿 検索
           </h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            自分が投稿したレシピのみを対象に絞り込みます。
-          </p>
-          <Link
-            href="/mypage"
-            className="mt-3 inline-flex text-sm font-medium text-zinc-700 underline-offset-2 hover:underline"
-          >
-            マイページに戻る
-          </Link>
         </div>
 
         <RecipeSearchDialog bounds={bounds} ranges={ranges} />
@@ -63,6 +61,11 @@ export default async function MyRecipeSearchPage({
                     <div className="relative w-full shrink-0 overflow-hidden bg-zinc-100 aspect-[4/3]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img} alt={row.title} className="h-full w-full object-cover" />
+                      <FavoriteButton
+                        targetType="recipe"
+                        targetId={row.id}
+                        initialChecked={recipeFavIds.has(row.id)}
+                      />
                     </div>
                     <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3">
                       <div className="min-w-0">

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import { AppSidebar } from "./components/AppSidebar";
 import { MobileSidebarMenu } from "./components/MobileSidebarMenu";
 import "./globals.css";
@@ -35,12 +34,8 @@ export default function RootLayout({
 
           <div className="min-w-0">
             <header className="border-b border-zinc-200 bg-white px-4 py-3 shadow-sm md:hidden">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center">
                 <MobileSidebarMenu />
-                <Link href="/" className="font-semibold text-emerald-700">
-                  うたろうフィットフード
-                </Link>
-                <span className="w-9" aria-hidden />
               </div>
             </header>
             <div>{children}</div>

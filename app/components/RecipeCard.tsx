@@ -1,12 +1,17 @@
 import type { RecipeListItem } from "@/types/recipe";
+import { FavoriteButton } from "@/app/components/FavoriteButton";
 import { resolveProductImageSrc } from "@/utils/productImage";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Props = {
   recipe: RecipeListItem;
+  editHref?: string;
+  favoriteKey?: { type: "recipe"; id: string };
 };
 
-export function RecipeCard({ recipe }: Props) {
+export function RecipeCard({ recipe, editHref, favoriteKey }: Props) {
+  const router = useRouter();
   const imageUrl = resolveProductImageSrc(recipe.image_url_1, "");
   const protein = recipe.protein != null ? Math.round(Number(recipe.protein)) : null;
   const fat = recipe.fat != null ? Math.round(Number(recipe.fat)) : null;
@@ -30,9 +35,26 @@ export function RecipeCard({ recipe }: Props) {
             <span className="text-xs">No image</span>
           </div>
         )}
-        <span className="absolute left-1.5 top-1.5 rounded bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-medium text-white">
-          レシピ
-        </span>
+        {editHref && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(editHref);
+            }}
+            className="absolute right-1.5 top-1.5 rounded bg-zinc-800/90 px-2 py-1 text-[10px] font-medium text-white hover:bg-zinc-700"
+          >
+            編集
+          </button>
+        )}
+        {favoriteKey && (
+          <FavoriteButton
+            targetType="recipe"
+            targetId={favoriteKey.id}
+            initialChecked
+          />
+        )}
       </div>
       <div className="space-y-1 px-2.5 py-2">
         <p className="line-clamp-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">

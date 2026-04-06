@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { FavoriteButton } from "@/app/components/FavoriteButton";
 import { resolveProductImageSrc } from "@/utils/productImage";
+import { createClient } from "@/utils/supabase/server";
 import {
   getUtaroSelectionBounds,
   rangesFromSearchParams,
@@ -12,6 +14,22 @@ export default async function SelectionSearchPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const selectionFavIds = new Set<string>();
+  if (user) {
+    const { data } = await supabase
+      .from("favorites")
+      .select("target_id")
+      .eq("user_id", user.id)
+      .eq("target_type", "selection");
+    for (const row of data ?? []) {
+      if (row?.target_id) selectionFavIds.add(String(row.target_id));
+    }
+  }
+
   const sp = await searchParams;
   const bounds = await getUtaroSelectionBounds();
   const rows = await searchUtaroSelections(sp, bounds);
@@ -53,6 +71,13 @@ export default async function SelectionSearchPage({
                         alt={row.name}
                         className="h-full w-full object-cover"
                       />
+                      {user && (
+                        <FavoriteButton
+                          targetType="selection"
+                          targetId={row.id}
+                          initialChecked={selectionFavIds.has(row.id)}
+                        />
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3">
                       <div className="min-w-0">

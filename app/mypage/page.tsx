@@ -38,23 +38,26 @@ type FavoriteSelection = {
   carbs: number | null;
 };
 
-async function getFavoriteProductsAndSelections(userId: string): Promise<{
+async function getFavoriteItems(userId: string): Promise<{
   products: Product[];
   selections: FavoriteSelection[];
+  recipes: RecipeListItem[];
 }> {
   const supabase = await createClient();
   const { data: favList, error: favError } = await supabase
     .from("favorites")
     .select("target_type, target_id")
     .eq("user_id", userId);
-  if (favError || !favList?.length) return { products: [], selections: [] };
+  if (favError || !favList?.length) return { products: [], selections: [], recipes: [] };
 
   const rows = favList as FavoriteRow[];
   const productIds = rows.filter((r) => r.target_type === "product").map((r) => r.target_id);
   const selectionIds = rows.filter((r) => r.target_type === "selection").map((r) => r.target_id);
+  const recipeIds = rows.filter((r) => r.target_type === "recipe").map((r) => r.target_id);
 
   let products: Product[] = [];
   let selections: FavoriteSelection[] = [];
+  let recipes: RecipeListItem[] = [];
 
   if (productIds.length > 0) {
     const { data: prods } = await supabase
@@ -70,8 +73,15 @@ async function getFavoriteProductsAndSelections(userId: string): Promise<{
       .in("id", selectionIds);
     selections = (sels ?? []) as FavoriteSelection[];
   }
+  if (recipeIds.length > 0) {
+    const { data: recs } = await supabase
+      .from("recipes")
+      .select("id, created_by, created_at, title, image_url_1, calories, carbs, protein, fat")
+      .in("id", recipeIds);
+    recipes = (recs ?? []) as RecipeListItem[];
+  }
 
-  return { products, selections };
+  return { products, selections, recipes };
 }
 
 export default async function Mypage() {
@@ -81,11 +91,15 @@ export default async function Mypage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [products, recipes, { products: favoriteProducts, selections: favoriteSelections }] =
+  const [
+    products,
+    recipes,
+    { products: favoriteProducts, selections: favoriteSelections, recipes: favoriteRecipes },
+  ] =
     await Promise.all([
       getMyProducts(user.id),
       getMyRecipes(user.id),
-      getFavoriteProductsAndSelections(user.id),
+      getFavoriteItems(user.id),
     ]);
 
   const displayName = user.user_metadata?.name ?? user.email?.split("@")[0] ?? "ユーザー";
@@ -103,6 +117,7 @@ export default async function Mypage() {
       recipes={recipes}
       favoriteProducts={favoriteProducts}
       favoriteSelections={favoriteSelections}
+      favoriteRecipes={favoriteRecipes}
     />
   );
 }

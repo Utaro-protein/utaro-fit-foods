@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
-  targetType: "product" | "selection";
+  targetType: "product" | "selection" | "recipe";
   targetId: string;
   initialChecked: boolean;
   className?: string;
@@ -19,23 +19,34 @@ export function FavoriteButton({
 }: Props) {
   const router = useRouter();
   const [checked, setChecked] = useState(initialChecked);
+  const [isPending, setIsPending] = useState(false);
 
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    setChecked((prev) => !prev);
-    const result = await toggleFavorite(targetType, targetId);
-    if (result.error) {
-      setChecked((prev) => !prev);
-      return;
+    if (isPending) return;
+
+    const nextChecked = !checked;
+    setChecked(nextChecked);
+    setIsPending(true);
+    try {
+      const result = await toggleFavorite(targetType, targetId);
+      if (result.error) {
+        setChecked(!nextChecked);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setIsPending(false);
     }
-    router.refresh();
   }
 
   return (
     <button
       type="button"
       onClick={handleClick}
+      disabled={isPending}
+      aria-busy={isPending}
       className={`absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow transition hover:bg-white ${className}`}
       aria-label={checked ? "お気に入りから外す" : "お気に入りに追加"}
     >

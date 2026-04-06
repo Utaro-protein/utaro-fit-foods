@@ -95,7 +95,7 @@ function toHomeItem(product: Product, isFavorited: boolean): HomeItem {
   };
 }
 
-function toHomeItemFromRecipe(recipe: RecipeListItem): HomeItem {
+function toHomeItemFromRecipe(recipe: RecipeListItem, isFavorited: boolean): HomeItem {
   return {
     id: recipe.id,
     name: recipe.title,
@@ -105,8 +105,8 @@ function toHomeItemFromRecipe(recipe: RecipeListItem): HomeItem {
     fat: recipe.fat != null ? Math.round(Number(recipe.fat)) : 0,
     imageUrl: resolveProductImageSrc(recipe.image_url_1),
     href: `/recipes/${recipe.id}`,
-    favoriteKey: null,
-    isFavorited: false,
+    favoriteKey: { type: "recipe", id: recipe.id },
+    isFavorited,
   };
 }
 
@@ -174,6 +174,9 @@ export default async function Home() {
   const selectionFavIds = new Set(
     favList.filter((f) => f.target_type === "selection").map((f) => f.target_id)
   );
+  const recipeFavIds = new Set(
+    favList.filter((f) => f.target_type === "recipe").map((f) => f.target_id)
+  );
 
   const [utaroSelections, newPosts, newRecipes] = await Promise.all([
     getUtaroSelections(),
@@ -184,7 +187,7 @@ export default async function Home() {
     toHomeItemFromSelection(r, selectionFavIds.has(r.id))
   );
   const newItems = newPosts.map((p) => toHomeItem(p, productFavIds.has(p.id)));
-  const recipeItems = newRecipes.map(toHomeItemFromRecipe);
+  const recipeItems = newRecipes.map((r) => toHomeItemFromRecipe(r, recipeFavIds.has(r.id)));
   const isLoggedIn = !!user;
 
   const fallbackPickItems: HomeItem[] = [
@@ -362,37 +365,24 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-zinc-50 pb-20">
       <div className="w-full space-y-4 pt-0 pb-5">
-        <section className="relative min-h-[320px] overflow-hidden border-b border-zinc-200 bg-zinc-200 sm:min-h-[380px]">
-          {/* 画像をセクション全体に表示（背面） */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://ptbpcsyeuxqmudxzrjkb.supabase.co/storage/v1/object/public/product-images/Home/Utaro%20banner.jpeg"
-            alt="筋トレ飯のヒーロー画像"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          {/* 左側にテキストを重ねる（スマホ時は斜め左・コンパクト） */}
-          <div className="absolute inset-y-0 left-0 z-10 flex max-w-[260px] flex-col justify-center pl-4 pr-2 py-10 -translate-x-2 -rotate-1 sm:translate-x-0 sm:rotate-0 sm:max-w-md sm:px-10 md:max-w-lg sm:py-14">
-            <div className="relative">
-              {/* 白い靄（テキスト背後） */}
-              <div
-                className="pointer-events-none absolute -inset-3 rounded-lg bg-white/35 backdrop-blur-[6px] sm:-inset-4"
-                aria-hidden
-              />
-              <h1 className="relative text-3xl font-bold tracking-tight text-zinc-900 drop-shadow-sm sm:text-4xl md:text-5xl">
-                <span className="whitespace-nowrap">おいしく、手軽に</span>
-                <br />
-                ボディメイク
-              </h1>
-              <p className="relative mt-2 text-sm font-medium text-zinc-800 drop-shadow-sm">
-                フィットネスインフルエンサー
-                <br className="md:hidden" />
-                「うたろう」監修
-              </p>
-              <p className="relative mt-4 inline-flex w-fit rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md">
-                今すぐ食べれる高タンパク食品！
-              </p>
-            </div>
-          </div>
+        <section className="relative min-h-[min(70vh,560px)] overflow-hidden border-b border-zinc-200 bg-zinc-200 sm:min-h-[min(75vh,640px)]">
+          {/* 狭いスマホ / タブレット（sm〜lg未満） / デスクトップで画像を切り替え */}
+          <picture className="absolute inset-0 h-full w-full">
+            <source
+              media="(min-width: 640px) and (max-width: 1023px)"
+              srcSet="https://kobmkkzrjsbyfgfyeukq.supabase.co/storage/v1/object/public/product-images/Home/Healthy%20snacks%20and%20fitness%20essentials.png"
+            />
+            <source
+              media="(max-width: 639px)"
+              srcSet="https://kobmkkzrjsbyfgfyeukq.supabase.co/storage/v1/object/public/product-images/Home/Healthy%20snack%20and%20refreshing%20drink.png"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://kobmkkzrjsbyfgfyeukq.supabase.co/storage/v1/object/public/product-images/Home/ChatGPT%20Image%20Apr%206,%202026,%2009_28_43%20PM.png"
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </picture>
         </section>
 
         <RailSection

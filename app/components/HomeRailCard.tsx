@@ -12,7 +12,7 @@ export type HomeRailItem = {
   fat: number;
   imageUrl: string;
   href?: string;
-  favoriteKey: { type: "product" | "selection"; id: string } | null;
+  favoriteKey: { type: "product" | "selection" | "recipe"; id: string } | null;
   isFavorited: boolean;
 };
 

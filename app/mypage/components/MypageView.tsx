@@ -17,6 +17,7 @@ type Props = {
   recipes: RecipeListItem[];
   favoriteProducts: Product[];
   favoriteSelections: SelectionCardItem[];
+  favoriteRecipes: RecipeListItem[];
 };
 
 export function MypageView({
@@ -27,6 +28,7 @@ export function MypageView({
   recipes,
   favoriteProducts,
   favoriteSelections,
+  favoriteRecipes,
 }: Props) {
   const [tab, setTab] = useState<"posts" | "favorites">("posts");
   const [postKind, setPostKind] = useState<"food" | "recipe">("food");
@@ -72,7 +74,7 @@ export function MypageView({
         </div>
       </div>
 
-      {/* タブ: 投稿 | お気に入りの食品 */}
+      {/* タブ: 投稿 | お気に入り */}
       <div className="mx-auto max-w-2xl border-b border-zinc-200">
         <div className="flex">
           <button
@@ -95,7 +97,7 @@ export function MypageView({
                 : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
             }`}
           >
-            お気に入りの食品
+            お気に入り
           </button>
         </div>
       </div>
@@ -171,7 +173,11 @@ export function MypageView({
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                 {recipes.map((recipe) => (
-                  <RecipeCard key={recipe.id} recipe={recipe} />
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    editHref={`/mypage/recipe/${recipe.id}/edit`}
+                  />
                 ))}
               </div>
             ))}
@@ -179,12 +185,14 @@ export function MypageView({
       )}
       {tab === "favorites" && (
         <div className="mx-auto max-w-2xl p-4">
-          {favoriteProducts.length === 0 && favoriteSelections.length === 0 ? (
+          {favoriteProducts.length === 0 &&
+          favoriteSelections.length === 0 &&
+          favoriteRecipes.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-24 text-center shadow-sm">
               <span className="mb-4 text-4xl" aria-hidden>
                 🍴
               </span>
-              <p className="text-zinc-500">お気に入りの食品はまだありません</p>
+              <p className="text-zinc-500">お気に入りはまだありません</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -200,6 +208,13 @@ export function MypageView({
                   key={`selection-${selection.id}`}
                   selection={selection}
                   favoriteKey={{ type: "selection", id: selection.id }}
+                />
+              ))}
+              {favoriteRecipes.map((recipe) => (
+                <RecipeCard
+                  key={`recipe-${recipe.id}`}
+                  recipe={recipe}
+                  favoriteKey={{ type: "recipe", id: recipe.id }}
                 />
               ))}
             </div>

@@ -285,6 +285,15 @@ export function PostFoodForm() {
         <label className="mb-1 block text-sm font-medium text-zinc-700">
           メイン画像
         </label>
+        <input
+          ref={mainImageInputRef}
+          id="food-main-image"
+          name="images"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={handleFileChange}
+        />
         {previews.length === 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             <label
@@ -293,15 +302,6 @@ export function PostFoodForm() {
             >
               写真を選択（任意）
             </label>
-            <input
-              ref={mainImageInputRef}
-              id="food-main-image"
-              name="images"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={handleFileChange}
-            />
             <span className="text-sm text-zinc-500">{mainImageStatus}</span>
           </div>
         ) : (

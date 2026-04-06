@@ -1,12 +1,13 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
-import { submitRecipe } from "./actions";
+import { resolveProductImageSrc } from "@/utils/productImage";
+import { deleteRecipe, updateRecipe } from "./actions";
+import type { RecipeListItem } from "@/types/recipe";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-/** レシピの表紙写真（工程ごとの写真は含まない） */
 const MAX_IMAGES = 1;
 
 type IngredientUnit = "g" | "ml";
@@ -23,14 +24,48 @@ type StepInput = {
   content: string;
   imageFile: File | null;
   imagePreview: string | null;
+  existingImagePath: string | null;
 };
+
+export type RecipeIngredientRow = {
+  id: string;
+  name: string;
+  amount: number;
+  unit: string;
+};
+
+export type RecipeStepRow = {
+  id: string;
+  content: string;
+  image_url: string | null;
+};
+
+type RecipeForEdit = RecipeListItem & { description: string | null };
+
+function getPathOrUrl(value: string | null | undefined): string {
+  if (!value) return "";
+  const v = value.trim();
+  if (/^https?:\/\//i.test(v)) {
+    const prefix = "/storage/v1/object/public/product-images/";
+    const i = v.indexOf(prefix);
+    if (i >= 0) return v.slice(i + prefix.length);
+    return v;
+  }
+  return v;
+}
 
 function createIngredient(): IngredientInput {
   return { id: crypto.randomUUID(), name: "", amount: "", unit: "g" };
 }
 
 function createStep(): StepInput {
-  return { id: crypto.randomUUID(), content: "", imageFile: null, imagePreview: null };
+  return {
+    id: crypto.randomUUID(),
+    content: "",
+    imageFile: null,
+    imagePreview: null,
+    existingImagePath: null,
+  };
 }
 
 function autoResizeTextarea(el: HTMLTextAreaElement) {
@@ -66,16 +101,59 @@ function RemoveRowButton({
   );
 }
 
-export function PostRecipeForm() {
+type Props = {
+  recipe: RecipeForEdit;
+  initialIngredients: RecipeIngredientRow[];
+  initialSteps: RecipeStepRow[];
+};
+
+export function EditRecipeForm({
+  recipe,
+  initialIngredients,
+  initialSteps,
+}: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const recipeMainImageInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [recipeGalleryStatus, setRecipeGalleryStatus] = useState("未選択");
-  const [ingredients, setIngredients] = useState<IngredientInput[]>([createIngredient()]);
-  const [steps, setSteps] = useState<StepInput[]>([createStep()]);
+  const [existingCoverPath, setExistingCoverPath] = useState<string | null>(() => {
+    const p = getPathOrUrl(recipe.image_url_1);
+    return p || null;
+  });
+  const [recipeGalleryStatus, setRecipeGalleryStatus] = useState(
+    recipe.image_url_1 ? "現在の画像を使用中" : "未選択"
+  );
+
+  const [ingredients, setIngredients] = useState<IngredientInput[]>(() =>
+    initialIngredients.length > 0
+      ? initialIngredients.map((row) => ({
+          id: row.id,
+          name: row.name,
+          amount: String(row.amount),
+          unit: row.unit === "ml" ? "ml" : "g",
+        }))
+      : [createIngredient()]
+  );
+
+  const [steps, setSteps] = useState<StepInput[]>(() =>
+    initialSteps.length > 0
+      ? initialSteps.map((row) => ({
+          id: row.id,
+          content: row.content,
+          imageFile: null,
+          imagePreview: null,
+          existingImagePath: row.image_url ? getPathOrUrl(row.image_url) : null,
+        }))
+      : [createStep()]
+  );
+
+  const currentCoverUrl = existingCoverPath
+    ? resolveProductImageSrc(existingCoverPath, "")
+    : null;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -119,6 +197,7 @@ export function PostRecipeForm() {
       .map((item) => ({
         content: item.content.trim(),
         imageFile: item.imageFile,
+        existingImagePath: item.existingImagePath,
       }))
       .filter((item) => item.content.length > 0);
     if (stepsForSubmit.length === 0) {
@@ -141,7 +220,7 @@ export function PostRecipeForm() {
 
       const fileInput = form.querySelector<HTMLInputElement>('input[name="images"]');
       const files = fileInput?.files ? Array.from(fileInput.files).slice(0, MAX_IMAGES) : [];
-      const imagePaths: string[] = [];
+      const imagePaths: string[] = existingCoverPath ? [existingCoverPath] : [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -155,12 +234,12 @@ export function PostRecipeForm() {
           setLoading(false);
           return;
         }
-        imagePaths.push(path);
+        imagePaths[i] = path;
       }
 
       const stepPayload: { content: string; image_url: string | null }[] = [];
       for (let i = 0; i < stepsForSubmit.length; i++) {
-        const { content, imageFile } = stepsForSubmit[i];
+        const { content, imageFile, existingImagePath } = stepsForSubmit[i];
         let stepImagePath: string | null = null;
         if (imageFile) {
           const ext = imageFile.name.split(".").pop() || "jpg";
@@ -174,17 +253,22 @@ export function PostRecipeForm() {
             return;
           }
           stepImagePath = path;
+        } else if (existingImagePath) {
+          stepImagePath = existingImagePath;
         }
         stepPayload.push({ content, image_url: stepImagePath });
       }
 
       const formData = new FormData(form);
       formData.delete("images");
-      imagePaths.forEach((path, i) => formData.set(`image_url_${i + 1}`, path));
+      for (let i = 0; i < MAX_IMAGES; i++) {
+        const path = imagePaths[i];
+        if (path) formData.set(`image_url_${i + 1}`, path);
+      }
       formData.set("ingredients_json", JSON.stringify(normalizedIngredients));
       formData.set("steps_json", JSON.stringify(stepPayload));
 
-      const result = await submitRecipe({}, formData);
+      const result = await updateRecipe(recipe.id, formData);
       if (result?.error) {
         setError(result.error);
       } else {
@@ -192,7 +276,7 @@ export function PostRecipeForm() {
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "投稿に失敗しました。");
+      setError(err instanceof Error ? err.message : "更新に失敗しました。");
     } finally {
       setLoading(false);
     }
@@ -202,7 +286,7 @@ export function PostRecipeForm() {
     const files = e.target.files;
     if (!files?.length) {
       setPreviews([]);
-      setRecipeGalleryStatus("未選択");
+      setRecipeGalleryStatus(recipe.image_url_1 ? "現在の画像を使用中" : "未選択");
       return;
     }
     const file = files[0];
@@ -219,8 +303,29 @@ export function PostRecipeForm() {
       prev.forEach(URL.revokeObjectURL);
       return [];
     });
+    setRecipeGalleryStatus(existingCoverPath ? "現在の画像を使用中" : "未選択");
+    if (recipeMainImageInputRef.current) recipeMainImageInputRef.current.value = "";
+  }
+
+  function clearExistingRecipeMainImage() {
+    setExistingCoverPath(null);
     setRecipeGalleryStatus("未選択");
     if (recipeMainImageInputRef.current) recipeMainImageInputRef.current.value = "";
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteRecipe(recipe.id);
+    if (result.error) {
+      setError(result.error);
+      setDeleting(false);
+      return;
+    }
+    setIsDeleteOpen(false);
+    router.push("/mypage");
+    router.refresh();
   }
 
   return (
@@ -240,6 +345,7 @@ export function PostRecipeForm() {
           name="title"
           type="text"
           required
+          defaultValue={recipe.title}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="例: 鶏むね肉の高タンパク炒め"
         />
@@ -253,6 +359,7 @@ export function PostRecipeForm() {
           id="description"
           name="description"
           rows={4}
+          defaultValue={recipe.description ?? ""}
           onInput={(e) => autoResizeTextarea(e.currentTarget)}
           className="w-full resize-none overflow-hidden rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           placeholder="レシピのポイントやおすすめの食べ方"
@@ -270,6 +377,7 @@ export function PostRecipeForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={recipe.calories ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
             placeholder="kcal"
           />
@@ -284,6 +392,7 @@ export function PostRecipeForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={recipe.carbs ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
           />
         </div>
@@ -297,6 +406,7 @@ export function PostRecipeForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={recipe.protein ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
           />
         </div>
@@ -310,6 +420,7 @@ export function PostRecipeForm() {
             type="number"
             min={0}
             step={0.1}
+            defaultValue={recipe.fat ?? ""}
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
           />
         </div>
@@ -425,39 +536,8 @@ export function PostRecipeForm() {
                   className="w-full resize-none overflow-hidden rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
                 />
                 <div>
-                  {!item.imagePreview ? (
+                  {item.imagePreview ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <label
-                        htmlFor={`step-image-${item.id}`}
-                        className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-                      >
-                        写真を選択（任意）
-                      </label>
-                      <input
-                        id={`step-image-${item.id}`}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          setSteps((prev) =>
-                            prev.map((row) => {
-                              if (row.id !== item.id) return row;
-                              if (row.imagePreview) URL.revokeObjectURL(row.imagePreview);
-                              return {
-                                ...row,
-                                imageFile: file,
-                                imagePreview: file ? URL.createObjectURL(file) : null,
-                              };
-                            })
-                          );
-                          e.target.value = "";
-                        }}
-                      />
-                      <span className="text-xs text-zinc-500">未選択</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -481,6 +561,90 @@ export function PostRecipeForm() {
                       >
                         写真を削除
                       </button>
+                    </div>
+                  ) : item.existingImagePath ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={resolveProductImageSrc(item.existingImagePath, "")}
+                          alt={`工程 ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSteps((prev) =>
+                            prev.map((row) =>
+                              row.id === item.id ? { ...row, existingImagePath: null } : row
+                            )
+                          )
+                        }
+                        className="text-xs text-zinc-600 underline hover:text-zinc-900"
+                      >
+                        写真を削除
+                      </button>
+                      <label
+                        htmlFor={`step-image-replace-${item.id}`}
+                        className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                      >
+                        差し替え
+                      </label>
+                      <input
+                        id={`step-image-replace-${item.id}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          setSteps((prev) =>
+                            prev.map((row) => {
+                              if (row.id !== item.id) return row;
+                              if (row.imagePreview) URL.revokeObjectURL(row.imagePreview);
+                              return {
+                                ...row,
+                                imageFile: file,
+                                imagePreview: file ? URL.createObjectURL(file) : null,
+                                existingImagePath: null,
+                              };
+                            })
+                          );
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor={`step-image-${item.id}`}
+                        className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                      >
+                        写真を選択（任意）
+                      </label>
+                      <input
+                        id={`step-image-${item.id}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          setSteps((prev) =>
+                            prev.map((row) => {
+                              if (row.id !== item.id) return row;
+                              if (row.imagePreview) URL.revokeObjectURL(row.imagePreview);
+                              return {
+                                ...row,
+                                imageFile: file,
+                                imagePreview: file ? URL.createObjectURL(file) : null,
+                                existingImagePath: null,
+                              };
+                            })
+                          );
+                          e.target.value = "";
+                        }}
+                      />
+                      <span className="text-xs text-zinc-500">未選択</span>
                     </div>
                   )}
                 </div>
@@ -522,17 +686,7 @@ export function PostRecipeForm() {
           className="sr-only"
           onChange={handleFileChange}
         />
-        {previews.length === 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              htmlFor="recipe-gallery-images"
-              className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-            >
-              写真を選択（任意）
-            </label>
-            <span className="text-sm text-zinc-500">{recipeGalleryStatus}</span>
-          </div>
-        ) : (
+        {previews.length > 0 ? (
           <div className="flex items-center gap-2">
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -550,6 +704,34 @@ export function PostRecipeForm() {
               写真を削除
             </button>
           </div>
+        ) : currentCoverUrl ? (
+          <div className="flex items-center gap-2">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentCoverUrl}
+                alt="現在のメイン画像"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={clearExistingRecipeMainImage}
+              className="text-xs text-zinc-600 underline hover:text-zinc-900"
+            >
+              写真を削除
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor="recipe-gallery-images"
+              className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              写真を選択（任意）
+            </label>
+            <span className="text-sm text-zinc-500">{recipeGalleryStatus}</span>
+          </div>
         )}
       </div>
 
@@ -559,7 +741,7 @@ export function PostRecipeForm() {
           disabled={loading}
           className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
-          {loading ? "投稿中..." : "投稿する"}
+          {loading ? "更新中..." : "更新する"}
         </button>
         <Link
           href="/mypage"
@@ -567,7 +749,45 @@ export function PostRecipeForm() {
         >
           キャンセル
         </Link>
+        <button
+          type="button"
+          onClick={() => setIsDeleteOpen(true)}
+          className="ml-auto rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50"
+        >
+          投稿を削除
+        </button>
       </div>
+
+      {isDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-zinc-900">
+              この投稿を削除しますか？
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              この操作は取り消せません。レシピ「{recipe.title}」が削除されます。
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={deleting}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "削除中..." : "削除する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

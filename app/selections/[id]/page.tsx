@@ -66,7 +66,7 @@ export default async function SelectionPage({
     <main className="min-h-screen bg-zinc-50 pb-12">
       <div className="mx-auto w-full max-w-4xl px-4 py-5 sm:px-6 sm:py-8">
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="grid gap-5 md:grid-cols-[minmax(0,360px)_1fr] md:items-center">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-center">
             <div className={`grid gap-3 ${img2 ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="aspect-square overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
                 {img1 ? (

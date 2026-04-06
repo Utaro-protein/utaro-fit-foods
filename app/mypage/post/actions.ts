@@ -316,3 +316,236 @@ export async function updateProduct(
   revalidatePath(`/products/${productId}`);
   return {};
 }
+
+export async function updateRecipe(
+  recipeId: string,
+  formData: FormData
+): Promise<SubmitProductState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください。" };
+  }
+
+  const { data: recipeRow } = await supabase
+    .from("recipes")
+    .select("id, created_by")
+    .eq("id", recipeId)
+    .single();
+  if (!recipeRow || recipeRow.created_by !== user.id) {
+    return { error: "この投稿を編集する権限がありません。" };
+  }
+
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) {
+    return { error: "レシピ名を入力してください。" };
+  }
+
+  const description = (formData.get("description") as string)?.trim() || null;
+  const calories = parseNum(formData.get("calories"));
+  const carbs = parseNum(formData.get("carbs"));
+  const protein = parseNum(formData.get("protein"));
+  const fat = parseNum(formData.get("fat"));
+
+  const rawRecipeCover = formData.get("image_url_1");
+  const recipeCoverPath =
+    typeof rawRecipeCover === "string" && rawRecipeCover.length > 0
+      ? toProductImagePath(rawRecipeCover)
+      : "";
+  const recipeCoverImage = recipeCoverPath.length > 0 ? recipeCoverPath : null;
+
+  const ingredientsPayload = parseJsonArray<RecipeIngredientPayload>(
+    formData.get("ingredients_json")
+  );
+  if (!ingredientsPayload || ingredientsPayload.length === 0) {
+    return { error: "材料を1つ以上入力してください。" };
+  }
+  const ingredients = ingredientsPayload
+    .map((item) => ({
+      name: String(item.name ?? "").trim(),
+      amount: Number(item.amount),
+      unit: item.unit,
+    }))
+    .filter((item) => item.name.length > 0 || Number.isFinite(item.amount));
+  if (
+    ingredients.length === 0 ||
+    ingredients.some(
+      (item) =>
+        !item.name ||
+        !Number.isFinite(item.amount) ||
+        item.amount < 0 ||
+        !["g", "ml"].includes(item.unit)
+    )
+  ) {
+    return { error: "材料の入力内容を確認してください。" };
+  }
+
+  const stepsPayload = parseJsonArray<RecipeStepPayload>(formData.get("steps_json"));
+  if (!stepsPayload || stepsPayload.length === 0) {
+    return { error: "作り方を1つ以上入力してください。" };
+  }
+  const steps = stepsPayload
+    .map((item) => {
+      const content = String(item.content ?? "").trim();
+      const rawPath = item.image_url;
+      let imageUrl: string | null = null;
+      if (rawPath != null && String(rawPath).trim() !== "") {
+        const p = toProductImagePath(String(rawPath));
+        imageUrl = p.length > 0 ? p : null;
+      }
+      return { content, image_url: imageUrl };
+    })
+    .filter((item) => item.content.length > 0);
+  if (steps.length === 0) {
+    return { error: "作り方を1つ以上入力してください。" };
+  }
+
+  const { error: updateErr } = await supabase
+    .from("recipes")
+    .update({
+      title,
+      description,
+      calories,
+      carbs,
+      protein,
+      fat,
+      image_url_1: recipeCoverImage,
+      image_url_2: null,
+      image_url_3: null,
+      image_url_4: null,
+    })
+    .eq("id", recipeId);
+
+  if (updateErr) {
+    return { error: updateErr.message };
+  }
+
+  await supabase.from("recipe_ingredients").delete().eq("recipe_id", recipeId);
+  await supabase.from("recipe_steps").delete().eq("recipe_id", recipeId);
+
+  const ingredientRows = ingredients.map((item, index) => ({
+    recipe_id: recipeId,
+    sort_order: index,
+    name: item.name,
+    amount: item.amount,
+    unit: item.unit,
+  }));
+  const stepRows = steps.map((item, index) => ({
+    recipe_id: recipeId,
+    sort_order: index,
+    content: item.content,
+    image_url: item.image_url,
+  }));
+
+  const { error: ingredientError } = await supabase
+    .from("recipe_ingredients")
+    .insert(ingredientRows);
+  if (ingredientError) {
+    return { error: ingredientError.message };
+  }
+
+  const { error: stepError } = await supabase.from("recipe_steps").insert(stepRows);
+  if (stepError) {
+    return { error: stepError.message };
+  }
+
+  revalidatePath("/mypage");
+  revalidatePath("/");
+  revalidatePath(`/recipes/${recipeId}`);
+  return {};
+}
+
+export async function deleteProduct(productId: string): Promise<SubmitProductState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください。" };
+  }
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, created_by")
+    .eq("id", productId)
+    .single();
+  if (!product || product.created_by !== user.id) {
+    return { error: "この投稿を削除する権限がありません。" };
+  }
+
+  // お気に入りに残っている参照を先に掃除する
+  const { error: favError } = await supabase
+    .from("favorites")
+    .delete()
+    .eq("target_type", "product")
+    .eq("target_id", productId);
+  if (favError) {
+    return { error: favError.message };
+  }
+
+  const { error } = await supabase.from("products").delete().eq("id", productId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/mypage");
+  revalidatePath("/");
+  revalidatePath(`/products/${productId}`);
+  return {};
+}
+
+export async function deleteRecipe(recipeId: string): Promise<SubmitProductState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください。" };
+  }
+
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("id, created_by")
+    .eq("id", recipeId)
+    .single();
+  if (!recipe || recipe.created_by !== user.id) {
+    return { error: "この投稿を削除する権限がありません。" };
+  }
+
+  // 子テーブルがCASCADEでない構成でも削除できるように先に消す
+  const { error: ingError } = await supabase
+    .from("recipe_ingredients")
+    .delete()
+    .eq("recipe_id", recipeId);
+  if (ingError) {
+    return { error: ingError.message };
+  }
+  const { error: stepError } = await supabase
+    .from("recipe_steps")
+    .delete()
+    .eq("recipe_id", recipeId);
+  if (stepError) {
+    return { error: stepError.message };
+  }
+
+  const { error: favError } = await supabase
+    .from("favorites")
+    .delete()
+    .eq("target_type", "recipe")
+    .eq("target_id", recipeId);
+  if (favError) {
+    return { error: favError.message };
+  }
+
+  const { error } = await supabase.from("recipes").delete().eq("id", recipeId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/mypage");
+  revalidatePath("/");
+  revalidatePath(`/recipes/${recipeId}`);
+  return {};
+}
